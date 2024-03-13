@@ -83,15 +83,5 @@ function createDevice(row, traccarUrl, username, password) {
         console.log(`Failed to create device ${row.name}. Error: ${error}`);
         document.getElementById('result').innerHTML += `<p>Failed to create device ${row.name}. Error: ${error}</p>`;
     });
-    document.getElementById('file').addEventListener('change', function(event) {
-        var reader = new FileReader();
-        reader.onload = function(event) {
-            var csvContent = event.target.result;
-            // Here you can parse the CSV content if necessary and generate HTML to display it
-            // For simplicity, we will display it as preformatted text
-            document.getElementById('csvContent').innerHTML = '<pre>' + csvContent + '</pre>';
-        };
-        reader.readAsText(event.target.files[0]);
-    });
     
 }
