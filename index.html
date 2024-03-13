@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Traccar Device Uploader</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Devices to Traccar</h1>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="traccar_url">Traccar Server URL:</label>
+                <input type="text" id="traccar_url" name="traccar_url" required>
+            </div>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="file">Device CSV:</label>
+                <input type="file" id="file" name="file" accept=".csv" required>
+            </div>
+            <button type="submit">Upload</button>
+        </form>
+        <div id="result"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
