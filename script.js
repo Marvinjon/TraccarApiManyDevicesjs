@@ -1,56 +1,86 @@
-document.getElementById('uploadForm').addEventListener('submit', function(event) {
-    event.preventDefault();
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
 
+    // Get form values
     const traccarUrl = document.getElementById('traccar_url').value;
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    const fileInput = document.getElementById('file');
+    const file = document.getElementById('file').files[0];
 
-    if (fileInput.files.length > 0) {
+    if (file) {
+        // Read the file
         const reader = new FileReader();
-
         reader.onload = function(e) {
-            const csv = e.target.result;
-            // Convert CSV to JSON here, or prepare data as needed for Traccar API
-            // This is a simplified example; you may need a CSV parsing library
-            const lines = csv.split('\n').map(line => line.split(','));
-            console.log(lines); // Log for demonstration; implement actual logic
-
-            // Example: Make API request to Traccar for each device
-            // You'll need to adjust this according to Traccar's API and your CSV structure
-            lines.forEach(line => {
-                // Construct device data from line array
-                const deviceData = {
-                    // Fill in with actual data mapping
-                };
-
-                // Make the API request to Traccar
-                // Example: postDevice(traccarUrl, username, password, deviceData);
-            });
+            const text = e.target.result;
+            processCSV(text, traccarUrl, username, password);
         };
-
-        reader.readAsText(fileInput.files[0]);
+        reader.readAsText(file);
     }
 });
 
-// Example function to POST device data to Traccar
-function postDevice(url, username, password, data) {
-    const fullUrl = `https://${url}/api/devices`;
-    fetch(fullUrl, {
+function processCSV(csvData, traccarUrl, username, password) {
+    // Convert CSV to JSON (Assuming CSV is comma-separated and the first row contains headers)
+    const lines = csvData.split('\n');
+    const headers = lines[0].split(',');
+    const data = lines.slice(1).map(line => {
+        const values = line.split(',');
+        return headers.reduce((obj, header, index) => {
+            obj[header] = values[index];
+            return obj;
+        }, {});
+    });
+
+    // Process each row
+    data.forEach(row => {
+        createDevice(row, traccarUrl, username, password);
+    });
+}
+
+function createDevice(row, traccarUrl, username, password) {
+    const url = `https://${traccarUrl}/api/devices`;
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(username + ':' + password)
+    };
+
+    let attributes = {};
+    try {
+        attributes = JSON.parse(row.attributes || "{}");
+    } catch (error) {
+        console.error("Failed to parse attributes:", error);
+    }
+
+    const data = {
+        name: row.name,
+        uniqueId: row.uniqueId,
+        status: row.status,
+        disabled: ['true', '1', 't', 'y', 'yes'].includes(row.disabled.toLowerCase()),
+        lastUpdate: row.lastUpdate, // Ensure this is in ISO 8601 format or converted appropriately
+        positionId: row.positionId ? parseInt(row.positionId) : null,
+        groupId: row.groupId ? parseInt(row.groupId) : null,
+        phone: row.phone,
+        model: row.model,
+        contact: row.contact,
+        category: row.category,
+    };
+
+    fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + btoa(username + ":" + password)
-        },
+        headers: headers,
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Success:', data);
-        // Handle success response
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
     })
-    .catch((error) => {
-        console.error('Error:', error);
-        // Handle errors
+    .then(json => {
+        console.log(`Device ${row.name} created successfully.`, json);
+        document.getElementById('result').innerHTML += `<p>Device ${row.name} created successfully.</p>`;
+    })
+    .catch(error => {
+        console.log(`Failed to create device ${row.name}. Error: ${error}`);
+        document.getElementById('result').innerHTML += `<p>Failed to create device ${row.name}. Error: ${error}</p>`;
     });
 }
