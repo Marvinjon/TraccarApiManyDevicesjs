@@ -4,7 +4,7 @@ Traccar Device Importer
 
 
 This website automates the process of adding multiple devices to a Traccar server by reading device details from a CSV file and using the Traccar API to create each device.
-Overview
+
 
 The script allows bulk importing of devices into Traccar, saving time and reducing the potential for manual entry errors. It supports setting various device properties, including unique identifiers, status, group associations, and custom attributes.
 
