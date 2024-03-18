@@ -14,6 +14,7 @@ CSV File Structure
 
 The CSV file should contain the following headers:
 
+    id: leave as 0, traccar will automatically assign an id
     name: The name of the device.
     uniqueId: A unique identifier for the device, typically the IMEI number.
     status: The status of the device (optional).
