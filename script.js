@@ -1,43 +1,124 @@
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) {
+        hidePreview();
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        displayCSVPreview(event.target.result);
+    };
+    reader.readAsText(file);
+});
+
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    // Get form values
     const traccarUrl = document.getElementById('traccar_url').value;
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    const file = document.getElementById('file').files[0];
+    const preview = document.getElementById('csvPreview');
 
-    if (file) {
-        // Read the file
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const text = e.target.result;
-            processCSV(text, traccarUrl, username, password);
-        };
-        reader.readAsText(file);
+    if (preview.hidden) {
+        return;
     }
+
+    const rows = getEditedRowsFromPreview();
+    rows.forEach(row => {
+        createDevice(row, traccarUrl, username, password);
+    });
 });
 
-function processCSV(csvData, traccarUrl, username, password) {
-    // Convert CSV to JSON (Assuming CSV is comma-separated and the first row contains headers)
-    const lines = csvData.split('\n');
-    const headers = lines[0].split(',');
-    const data = lines.slice(1).map(line => {
+function parseCSV(csvData) {
+    const lines = csvData.split(/\r?\n/).filter(line => line.trim() !== '');
+    if (lines.length === 0) {
+        return { headers: [], rows: [] };
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1).map(line => {
         const values = line.split(',');
         return headers.reduce((obj, header, index) => {
-            obj[header] = values[index];
+            obj[header] = (values[index] || '').trim();
             return obj;
         }, {});
     });
 
-    // Process each row
-    data.forEach(row => {
-        createDevice(row, traccarUrl, username, password);
+    return { headers, rows };
+}
+
+function displayCSVPreview(csvData) {
+    const { headers, rows } = parseCSV(csvData);
+    const preview = document.getElementById('csvPreview');
+    const table = document.getElementById('previewTable');
+    const count = document.getElementById('previewCount');
+
+    if (headers.length === 0) {
+        hidePreview();
+        return;
+    }
+
+    let html = '<thead><tr>';
+    headers.forEach(header => {
+        html += `<th data-header="${escapeHtml(header)}">${escapeHtml(header)}</th>`;
     });
+    html += '</tr></thead><tbody>';
+
+    rows.forEach(row => {
+        html += '<tr>';
+        headers.forEach(header => {
+            const value = row[header] || '';
+            html += `<td><input type="text" data-field="${escapeHtml(header)}" value="${escapeHtml(value)}"></td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+
+    table.innerHTML = html;
+    count.textContent = `${rows.length} device${rows.length === 1 ? '' : 's'} found. Edit any field below, then click Upload.`;
+    preview.hidden = false;
+}
+
+function getEditedRowsFromPreview() {
+    const table = document.getElementById('previewTable');
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.dataset.header);
+    const rows = [];
+
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        const row = {};
+        headers.forEach(header => {
+            const input = tr.querySelector(`input[data-field="${CSS.escape(header)}"]`);
+            row[header] = input ? input.value.trim() : '';
+        });
+        rows.push(row);
+    });
+
+    return rows;
+}
+
+function hidePreview() {
+    document.getElementById('csvPreview').hidden = true;
+    document.getElementById('previewTable').innerHTML = '';
+    document.getElementById('previewCount').textContent = '';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function normalizeTraccarUrl(traccarUrl) {
+    const trimmed = traccarUrl.trim().replace(/\/+$/, '');
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+    return `https://${trimmed}`;
 }
 
 function createDevice(row, traccarUrl, username, password) {
-    const url = `https://${traccarUrl}/api/devices`;
+    const url = `${normalizeTraccarUrl(traccarUrl)}/api/devices`;
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Basic ' + btoa(username + ':' + password)
@@ -54,7 +135,7 @@ function createDevice(row, traccarUrl, username, password) {
         name: row.name,
         uniqueId: row.uniqueId,
         status: row.status,
-        disabled: ['true', '1', 't', 'y', 'yes'].includes(row.disabled.toLowerCase()),
+        disabled: ['true', '1', 't', 'y', 'yes'].includes((row.disabled || '').toLowerCase()),
         lastUpdate: row.lastUpdate, // Ensure this is in ISO 8601 format or converted appropriately
         positionId: row.positionId ? parseInt(row.positionId) : null,
         groupId: row.groupId ? parseInt(row.groupId) : null,
@@ -83,5 +164,4 @@ function createDevice(row, traccarUrl, username, password) {
         console.log(`Failed to create device ${row.name}. Error: ${error}`);
         document.getElementById('result').innerHTML += `<p>Failed to create device ${row.name}. Error: ${error}</p>`;
     });
-    
 }

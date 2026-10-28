@@ -12,7 +12,7 @@
         <form id="uploadForm">
             <div class="form-group">
                 <label for="traccar_url">Traccar Server URL:</label>
-                <input type="text" id="traccar_url" placeholder="Example: demo.traccar.org" name="traccar_url" required>
+                <input type="text" id="traccar_url" placeholder="Example: demo.traccar.org or https://demo.traccar.org" name="traccar_url" required>
             </div>
             <div class="form-group">
                 <label for="username">E-mail:</label>
@@ -25,6 +25,13 @@
             <div class="form-group">
                 <label for="file">CSV file with the devices in the correct format as stated in the <a href="https://github.com/Marvinjon/TraccarApiManyDevicesjs">documentation</a></label>
                 <input type="file" id="file" name="file" accept=".csv" required>
+            </div>
+            <div id="csvPreview" class="csv-preview" hidden>
+                <h3>CSV Preview</h3>
+                <p id="previewCount"></p>
+                <div class="preview-table-wrap">
+                    <table id="previewTable"></table>
+                </div>
             </div>
             <button type="submit">Upload</button>
         </form>
