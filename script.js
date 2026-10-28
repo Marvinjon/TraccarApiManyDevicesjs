@@ -118,12 +118,6 @@ function normalizeTraccarUrl(traccarUrl) {
 }
 
 function createDevice(row, traccarUrl, username, password) {
-    const url = `${normalizeTraccarUrl(traccarUrl)}/api/devices`;
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa(username + ':' + password)
-    };
-
     let attributes = {};
     try {
         attributes = JSON.parse(row.attributes || "{}");
@@ -131,7 +125,7 @@ function createDevice(row, traccarUrl, username, password) {
         console.error("Failed to parse attributes:", error);
     }
 
-    const data = {
+    const device = {
         name: row.name,
         uniqueId: row.uniqueId,
         status: row.status,
@@ -143,18 +137,39 @@ function createDevice(row, traccarUrl, username, password) {
         model: row.model,
         contact: row.contact,
         category: row.category,
+        attributes: attributes,
     };
 
-    fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(data)
-    })
-    .then(response => {
+    // Browser → Traccar is blocked by CORS. On Netlify we proxy via a function.
+    const useProxy = window.location.protocol !== 'file:';
+    const request = useProxy
+        ? fetch('/.netlify/functions/create-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                traccarUrl: normalizeTraccarUrl(traccarUrl),
+                username,
+                password,
+                device,
+            }),
+        })
+        : fetch(`${normalizeTraccarUrl(traccarUrl)}/api/devices`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Basic ' + btoa(username + ':' + password),
+            },
+            body: JSON.stringify(device),
+        });
+
+    request
+    .then(async response => {
+        const json = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const message = json.message || json.error || `HTTP error! status: ${response.status}`;
+            throw new Error(message);
         }
-        return response.json();
+        return json;
     })
     .then(json => {
         console.log(`Device ${row.name} created successfully.`, json);
